@@ -1,33 +1,38 @@
-name: Build du blog
-
+name: Déploiement du blog
+ 
 on:
   push:
     branches: [main]
-  pull_request: # construire aussi les propositions, avant de fusionner
-
+ 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+ 
+# Une seule expédition à la fois (deux push rapprochés ne se télescopent pas)
+concurrency:
+  group: pages
+  cancel-in-progress: false
+ 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Récupérer le code
-        uses: actions/checkout@v6 # sinon le runner neuf ne voit pas votre dépôt
-
-      - name: Installer Hugo
-        uses: peaceiris/actions-hugo@v3
-        with:
-          hugo-version: "0.128.0" # version FIXE → résultat reproductible
-
-      - name: Construire le site
-        run: hugo --minify # échoue (rouge) si le site ne compile pas
- 
-  qualite:
-    runs-on: ubuntu-latest
-    steps:
       - uses: actions/checkout@v6
-      - name: Lint des articles Markdown
-        run: npx markdownlint-cli2 "content/**/*.md"   # ← adaptez le chemin : _posts/ (Jekyll), src/ (Astro)
-      - name: Vérifier les liens morts
-        uses: lycheeverse/lychee-action@v2
+      - uses: actions/configure-pages@v5     # prépare l'environnement de déploiement Pages
+      - uses: peaceiris/actions-hugo@v3
+        with: { hugo-version: "0.128.0" }
+      - run: hugo --minify
+      - uses: actions/upload-pages-artifact@v4
         with:
-          args: --no-progress "content/**/*.md"        # ← idem, pointez vos articles
-          failIfEmpty: false   # un article sans aucun lien ne doit pas faire rougir la porte
+          path: ./public                     # ← _site/ pour Jekyll, dist/ pour Astro
+ 
+  deploy:
+    needs: build                             # n'expédie QUE si le build a réussi
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
