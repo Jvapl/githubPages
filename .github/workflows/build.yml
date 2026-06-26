@@ -26,3 +26,13 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         with:
           path: ./public                     # ← _site/ pour Jekyll, dist/ pour Astro
+          
+    deploy:
+    needs: build                             # n'expédie QUE si le build a réussi
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
